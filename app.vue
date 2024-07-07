@@ -191,16 +191,13 @@
       </div>
 
       <div class="invoice-footer">
-      <div class="footer-content">
-          <!-- Footer content here -->
-          <div class="seller-info">
-              <p>{{ companyNameInput || 'Company Name' }}</p>
-              <p>{{ companyAddressInput || 'Address' }}</p>
-              <p>{{ companyEmailInput || 'Email' }}</p>
-              <p>{{ companyNumberInput || 'Phone Number' }}</p>
-          </div>
-        </div>
+      <div class="seller-info">
+        <p>{{ companyNameInput || 'Company Name' }}</p>
+        <p>{{ companyAddressInput || 'Address' }}</p>
+        <p>{{ companyEmailInput || 'Email' }}</p>
+        <p>{{ companyNumberInput || 'Phone Number' }}</p>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -336,28 +333,68 @@ export default {
 </script>
 
 <style scoped>
-/* General Styles */
-body {
+* {
   font-family: Arial, sans-serif;
+  box-sizing: border-box; /* Ensure padding and border are included in element's total width and height */
+}
+
+body {
   margin: 0;
   padding: 0;
   background-color: #f0f0f0;
 }
 
 .invoice-generator {
-  font-family: Arial, sans-serif;
   display: flex;
+  flex-direction: column;
   height: 100vh;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.input-section, .preview-section {
+  padding: 20px;
+}
+
+.input-section {
+  background-color: #f8f8f8;
+  flex: 1;
+}
+
+.preview-section {
+
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Ensures the seller info stays at the bottom */
+}
+
+/* Adjust layout for desktop */
+@media (min-width: 1024px) {
+  .invoice-generator {
+    flex-direction: row;
+  }
+
+  .input-section, .preview-section {
+    height: 100vh; /* Ensure both sections use full viewport height */
+    overflow-y: auto; /* Enable scrolling within sections */
+  }
+}
+
+/* Stack sections on mobile */
+@media (max-width: 1024px) {
+  .invoice-generator {
+    flex-direction: column;
+  }
+
+  .input-section, .preview-section {
+    height: auto; /* Let sections grow based on content */
+    overflow-y: visible; /* Disable scrolling within sections */
+  }
 }
 
 /* Input Section Styles */
-.input-section {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background-color: #f8f8f8;
-}
-
 .input-group {
   margin-bottom: 20px;
 }
@@ -368,17 +405,21 @@ body {
 }
 
 .styled-input {
+  background-color: #f8f8f8;
   width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: none; /* Remove all borders */
+  border-bottom: 2px solid #ccc; /* Add a bottom border */
   font-size: 14px;
+  border-radius: 0; /* Remove border-radius if any */
+  outline: none; /* Remove the default outline */
+  transition: border-color 0.3s ease; /* Smooth transition for border color */
 }
 
-/* Date Input Styles */
-.date-input {
-  position: relative;
+/* Optional: Add a focus state for better UX */
+.styled-input:focus {
+  border-bottom-color: #ff8c00; /* Change border color on focus */
 }
 
 /* Product Information Styles */
@@ -439,25 +480,21 @@ body {
 
 /* Preview Section Styles */
 .preview-section {
-  font: arial;
-  flex: 1;
-  background-color: white;
-  padding: 40px;
-  overflow-y: auto;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  font-family: Arial, sans-serif;
 }
 
 .preview-content {
-  width: 210mm;
-  min-height: 297mm;
+  width: 210mm; /* A4 width */
+  height: 297mm; /* A4 height */
+  margin: auto;
   padding: 20mm;
-  margin: 0 auto;
   background: white;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   font-size: 12pt;
   line-height: 1.3;
-  transform-origin: top left;
-  transform: scale(0.7); /* Adjust this value to fit your screen */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .invoice-header {
@@ -538,43 +575,60 @@ body {
 }
 
 .seller-info {
-  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
   padding-top: 20px;
   border-top: 1px solid #e0e0e0;
   color: #555;
   font-size: 14px;
+  margin-top: auto; /* Pushes the seller info to the bottom */
 }
 
 
-
-/* Responsive Styles */
-@media (max-width: 1024px) {
-  .invoice-generator {
-    flex-direction: column;
-  }
-  
-  .preview-content {
-    transform: scale(1);
-    width: 100%;
-    padding: 10mm;
-  }
-}
 
 /* Print Styles */
 @media print {
   .input-section {
     display: none;
   }
+
   .preview-section {
     padding: 0;
+    box-shadow: none; /* Remove shadow */
   }
+
   .preview-content {
-    width: 210mm;
-    height: 297mm;
+    width: 100%;
+    height: auto;
     margin: 0;
     padding: 0;
-    transform: none;
     box-shadow: none;
+  }
+
+  body, html {
+    margin: 0;
+    padding: 0;
+  }
+
+  .preview-section, .preview-section * {
+    visibility: visible;
+  }
+
+  .preview-section::before,
+  .preview-section::after {
+    display: none;
+  }
+
+  .preview-content {
+    page-break-inside: avoid; /* Avoid breaking inside */
+  }
+
+  .seller-info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
   }
 }
 </style>
