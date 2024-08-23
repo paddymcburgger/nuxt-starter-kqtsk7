@@ -42,6 +42,22 @@
             class="styled-input"
           />
         </div>
+        <!-- New fields -->
+        <input
+          v-model="currencyCodeInput"
+          placeholder="Currency Code (e.g., USD, EUR)"
+          class="styled-input"
+        />
+        <input
+          v-model="paymentTermsInput"
+          placeholder="Payment Terms"
+          class="styled-input"
+        />
+        <input
+          v-model="invoiceTypeCodeInput"
+          placeholder="Invoice Type Code"
+          class="styled-input"
+        />
       </section>
 
       <!-- Buyer Information -->
@@ -67,21 +83,64 @@
           placeholder="Client Number"
           class="styled-input"
         />
+        <!-- New fields -->
+        <input
+          v-model="clientTaxIdInput"
+          placeholder="Client Tax ID"
+          class="styled-input"
+        />
+        <input
+          v-model="clientVatNumberInput"
+          placeholder="Client VAT Number"
+          class="styled-input"
+        />
       </section>
 
       <!-- Product Information -->
       <section class="input-group">
-      <h3>Product Information</h3>
-      <div v-for="(inputRow, index) in inputRows" :key="index" class="product-row">
-        <input v-model="inputRow.item" placeholder="Item/Service" class="styled-input full-width">
-        <div class="price-quantity-row">
-          <input v-model="inputRow.price" placeholder="Price" class="styled-input half-width">
-          <input v-model="inputRow.quantity" placeholder="Quantity" class="styled-input half-width">
+        <h3>Product Information</h3>
+        <div
+          v-for="(inputRow, index) in inputRows"
+          :key="index"
+          class="product-row"
+        >
+          <input
+            v-model="inputRow.item"
+            placeholder="Item/Service"
+            class="styled-input full-width"
+          />
+          <div class="price-quantity-row">
+            <input
+              v-model="inputRow.price"
+              placeholder="Price"
+              class="styled-input third-width"
+            />
+            <input
+              v-model="inputRow.quantity"
+              placeholder="Quantity"
+              class="styled-input third-width"
+            />
+            <input
+              v-model="inputRow.unitCode"
+              placeholder="Unit Code"
+              class="styled-input third-width"
+            />
+          </div>
+          <input
+            v-model="inputRow.taxCategory"
+            placeholder="Tax Category"
+            class="styled-input full-width"
+          />
+          <button
+            v-if="index > 0"
+            @click="removeItem(index)"
+            class="remove-btn"
+          >
+            -
+          </button>
         </div>
-        <button v-if="index > 0" @click="removeItem(index)" class="remove-btn">-</button>
-      </div>
-      <button @click="addItem" class="add-btn">+ Add Item</button>
-    </section>
+        <button @click="addItem" class="add-btn">+ Add Item</button>
+      </section>
 
       <!-- VAT and Discount -->
       <section class="input-group">
@@ -122,6 +181,31 @@
           placeholder="Company Number"
           class="styled-input"
         />
+        <!-- New fields -->
+        <input
+          v-model="companyTaxIdInput"
+          placeholder="Company Tax ID"
+          class="styled-input"
+        />
+        <input
+          v-model="companyVatNumberInput"
+          placeholder="Company VAT Number"
+          class="styled-input"
+        />
+        <input
+          v-model="companyBankAccountInput"
+          placeholder="Company Bank Account"
+          class="styled-input"
+        />
+      </section>
+      <!-- Custom Notes Section -->
+      <section class="input-group">
+        <h3>Additional Notes</h3>
+        <input
+          v-model="notesInput"
+          placeholder="Additional Notes"
+          class="styled-input"
+        />
       </section>
 
       <button @click="printInvoice" class="generate-btn">
@@ -133,21 +217,30 @@
     <div class="preview-section" ref="invoicePreview">
       <div class="invoice-header">
         <div class="invoice-number">
-        <h1>Invoice: {{ invoiceNumberInput }}</h1>
+          <h1>Invoice: {{ invoiceNumberInput }}</h1>
           <p>Invoice Date: {{ invoiceDateInput }}</p>
           <p>Due Date: {{ dueDateInput }}</p>
+          <p v-if="currencyCodeInput">Currency: {{ currencyCodeInput }}</p>
+          <p v-if="paymentTermsInput">Payment Terms: {{ paymentTermsInput }}</p>
+          <p v-if="invoiceTypeCodeInput">
+            Invoice Type: {{ invoiceTypeCodeInput }}
+          </p>
         </div>
         <div class="client-info">
           <h2>{{ clientNameInput || 'Client Name' }}</h2>
           <p>{{ clientAddressInput || 'Client Address' }}</p>
           <p>{{ clientEmailInput || 'Email' }}</p>
           <p>{{ clientNumberInput || 'Phone Number' }}</p>
+          <p v-if="clientTaxIdInput">Tax ID: {{ clientTaxIdInput }}</p>
+          <p v-if="clientVatNumberInput">
+            VAT Number: {{ clientVatNumberInput }}
+          </p>
         </div>
       </div>
 
       <div class="total-due">
         <h3>Total Due</h3>
-        <h2>Sum of all charges</h2>
+        <h2>{{ totalDue }} {{ currencyCodeInput }}</h2>
       </div>
 
       <div class="invoice-table">
@@ -155,17 +248,22 @@
           <thead>
             <tr>
               <th>Description</th>
-              <th>Cost ($)</th>
-              <th>QTY</th>
+              <th v-if="showUnitColumn">Unit</th>
+              <th>Price ({{ currencyCodeInput }})</th>
+              <th v-if="showQuantityColumn">QTY</th>
               <th>Amount</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, index) in items" :key="index">
-              <td>{{ item.item }}</td>
-              <td>{{ item.price }} $</td>
-              <td>{{ item.quantity }}</td>
-              <td>{{ item.total }} $</td>
+              <td>
+                {{ item.item }}
+                <span v-if="item.taxCategory">({{ item.taxCategory }})</span>
+              </td>
+              <td v-if="showUnitColumn">{{ item.unitCode }}</td>
+              <td>{{ item.price }}</td>
+              <td v-if="showQuantityColumn">{{ item.quantity }}</td>
+              <td>{{ item.total }}</td>
             </tr>
           </tbody>
         </table>
@@ -174,30 +272,46 @@
       <div class="invoice-summary">
         <div class="summary-row">
           <span>Subtotal:</span>
-          <span>{{ totalSum.toFixed(2) }}$</span>
+          <span>{{ totalSum.toFixed(2) }} {{ currencyCodeInput }}</span>
         </div>
-        <div class="summary-row">
+        <div v-if="vatPercentage" class="summary-row">
           <span>VAT ({{ vatPercentage }}%):</span>
-          <span>{{ vatAmount }}$</span>
+          <span>{{ vatAmount }} {{ currencyCodeInput }}</span>
         </div>
-        <div class="summary-row">
+        <div v-if="discountPercentage" class="summary-row">
           <span>Discount ({{ discountPercentage }}%):</span>
-          <span>{{ discountAmount }}$</span>
+          <span>{{ discountAmount }} {{ currencyCodeInput }}</span>
         </div>
         <div class="summary-row total">
           <span>Total Due:</span>
-          <span>{{ totalDue }}$</span>
+          <span>{{ totalDue }} {{ currencyCodeInput }}</span>
         </div>
       </div>
 
-      <div class="invoice-footer">
-      <div class="seller-info">
-        <p>{{ companyNameInput || 'Company Name' }}</p>
-        <p>{{ companyAddressInput || 'Address' }}</p>
-        <p>{{ companyEmailInput || 'Email' }}</p>
-        <p>{{ companyNumberInput || 'Phone Number' }}</p>
+      <div v-if="notesInput" class="invoice-notes">
+        <h4>Additional Notes:</h4>
+        <p>{{ notesInput }}</p>
       </div>
-    </div>
+
+      <div class="invoice-footer">
+        <div class="seller-info">
+          <div class="seller-info-main">
+            <p>{{ companyNameInput || 'Company Name' }}</p>
+            <p>{{ companyAddressInput || 'Address' }}</p>
+            <p>{{ companyEmailInput || 'Email' }}</p>
+            <p>{{ companyNumberInput || 'Phone Number' }}</p>
+          </div>
+          <div class="seller-info-additional">
+            <p v-if="companyTaxIdInput">Tax ID: {{ companyTaxIdInput }}</p>
+            <p v-if="companyVatNumberInput">
+              VAT Number: {{ companyVatNumberInput }}
+            </p>
+            <p v-if="companyBankAccountInput">
+              Bank Account: {{ companyBankAccountInput }}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -206,7 +320,9 @@
 export default {
   data() {
     return {
-      inputRows: [{ item: '', price: '', quantity: '' }],
+      inputRows: [
+        { item: '', price: '', quantity: '', unitCode: '', taxCategory: '' },
+      ],
       items: [],
       invoiceNumberInput: '',
       invoiceDateInput: '',
@@ -219,12 +335,21 @@ export default {
       clientAddressInput: '',
       clientEmailInput: '',
       clientNumberInput: '',
+      clientTaxIdInput: '',
+      clientVatNumberInput: '',
       companyNameInput: '',
       companyAddressInput: '',
       companyEmailInput: '',
       companyNumberInput: '',
+      companyTaxIdInput: '',
+      companyVatNumberInput: '',
+      companyBankAccountInput: '',
       vatPercentage: '',
       discountPercentage: '',
+      currencyCodeInput: '',
+      paymentTermsInput: '',
+      invoiceTypeCodeInput: '',
+      notesInput: '',
     };
   },
   computed: {
@@ -268,6 +393,15 @@ export default {
         parseFloat(this.vatAmount) -
         parseFloat(this.discountAmount)
       ).toFixed(2);
+    },
+
+    showUnitColumn() {
+      return this.items.some((item) => item.unitCode);
+    },
+    showQuantityColumn() {
+      return this.items.some(
+        (item) => item.quantity && parseFloat(item.quantity) > 0
+      );
     },
   },
   methods: {
@@ -323,6 +457,8 @@ export default {
           item: row.item,
           price: row.price,
           quantity: parseFloat(row.quantity || 0),
+          unitCode: row.unitCode,
+          taxCategory: row.taxCategory,
           total: row.price * (parseFloat(row.quantity || 0) || 1),
         }));
       },
@@ -351,7 +487,8 @@ body {
   overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
-.input-section, .preview-section {
+.input-section,
+.preview-section {
   padding: 20px;
 }
 
@@ -361,7 +498,6 @@ body {
 }
 
 .preview-section {
-
   background-color: white;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   flex: 1;
@@ -376,7 +512,8 @@ body {
     flex-direction: row;
   }
 
-  .input-section, .preview-section {
+  .input-section,
+  .preview-section {
     height: 100vh; /* Ensure both sections use full viewport height */
     overflow-y: auto; /* Enable scrolling within sections */
   }
@@ -388,7 +525,8 @@ body {
     flex-direction: column;
   }
 
-  .input-section, .preview-section {
+  .input-section,
+  .preview-section {
     height: auto; /* Let sections grow based on content */
     overflow-y: visible; /* Disable scrolling within sections */
   }
@@ -440,7 +578,8 @@ body {
   width: calc(50% - 5px);
 }
 
-.add-btn, .remove-btn {
+.add-btn,
+.remove-btn {
   background-color: #ff8c00;
   color: white;
   border: none;
@@ -501,6 +640,7 @@ body {
   display: flex;
   justify-content: space-between;
   margin-bottom: 40px;
+  z-index: 1000;
 }
 
 .invoice-number h1 {
@@ -509,7 +649,8 @@ body {
   margin-bottom: 10px;
 }
 
-.invoice-number p, .client-info p {
+.invoice-number p,
+.client-info p {
   margin: 5px 0;
   color: #555;
   font-size: 14px;
@@ -543,7 +684,8 @@ body {
   border-collapse: collapse;
 }
 
-.invoice-table th, .invoice-table td {
+.invoice-table th,
+.invoice-table td {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid #e0e0e0;
@@ -576,21 +718,42 @@ body {
 
 .seller-info {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   text-align: left;
   padding-top: 20px;
   border-top: 1px solid #e0e0e0;
   color: #555;
   font-size: 14px;
-  margin-top: auto; /* Pushes the seller info to the bottom */
 }
 
+.seller-info-main {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
 
+.seller-info-main p {
+  margin-right: 20px;
+  margin-bottom: 5px;
+}
+
+.seller-info-additional {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.seller-info-additional p {
+  margin-right: 20px;
+  margin-bottom: 5px;
+}
 
 /* Print Styles */
 @media print {
-  .input-section {
-    display: none;
+  .preview-section {
+    display: block;
+    height: auto;
   }
 
   .preview-section {
@@ -606,12 +769,14 @@ body {
     box-shadow: none;
   }
 
-  body, html {
+  body,
+  html {
     margin: 0;
     padding: 0;
   }
 
-  .preview-section, .preview-section * {
+  .preview-section,
+  .preview-section * {
     visibility: visible;
   }
 
@@ -630,5 +795,25 @@ body {
     left: 20px;
     right: 20px;
   }
+}
+
+.third-width {
+  width: calc(33.33% - 6.67px);
+}
+
+.invoice-notes {
+  margin-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 10px;
+}
+
+.invoice-notes h4 {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.invoice-notes p {
+  font-size: 14px;
+  color: #555;
 }
 </style>
